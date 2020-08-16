@@ -73,6 +73,7 @@ public class AuthService implements UserDetailsService {
     public AuthResponse signin(LoginRequest loginRequest, HttpServletRequest request) {
 
         User user = validateInput(loginRequest.getUsername(), null, loginRequest.getPassword(), null, null, 2);
+
         if (user.lastPasswordChange() == null) {
             throw new BadRequestException("Không tìm thấy lần thay đổi mật khẩu lần cuối.");
         }
@@ -85,6 +86,9 @@ public class AuthService implements UserDetailsService {
         }
         if (!user.getEmailVerified()) {
             throw new BadRequestException(String.format("Tài khoản [%s] chưa được kích hoạt.", user.getUsername()));
+        }
+        if (!SecurityUtils.checkEncryptPassword(loginRequest.password(), user.password())) {
+            throw new BadRequestException("Sai thông tin mật khẩu.");
         }
 
         Authentication authentication = authenticationManager.authenticate(
@@ -101,7 +105,7 @@ public class AuthService implements UserDetailsService {
     /**
      * Đăng ký tài khoản
      */
-    public User signup(SignUpRequest signUpRequest) throws Exception {
+    public User signup(SignUpRequest signUpRequest) {
         if (validateInput(signUpRequest.getUsername(), signUpRequest.email(), null,
                 signUpRequest.password(), signUpRequest.confirmPassword(), 1) != null) {
             throw new BadRequestException("Đăng ký tài khoản thất bại.");
@@ -112,7 +116,7 @@ public class AuthService implements UserDetailsService {
         user.setUsername(signUpRequest.getUsername());
         user.setEmail(signUpRequest.getEmail());
         user.setLastPasswordChange(new Date());
-        user.setPassword(new SecurityUtils().encrypt(signUpRequest.password()));
+        user.updatePassword(signUpRequest.password());
         user.setProvider(SocialProvider.local);
         user = userRepository.save(user);
         return user;
@@ -121,7 +125,7 @@ public class AuthService implements UserDetailsService {
     /**
      * Đổi mật khẩu
      */
-    public User changePassword(ChangePasswordRequest changePasswordRequest) throws Exception {
+    public User changePassword(ChangePasswordRequest changePasswordRequest) {
         User user = validateInput(changePasswordRequest.getUsername(), null,
                 changePasswordRequest.oldPassword(), changePasswordRequest.newPassword(),
                 changePasswordRequest.confirmPassword(), 3);
@@ -129,18 +133,18 @@ public class AuthService implements UserDetailsService {
             throw new BadRequestException(String.format("Mật khẩu của người dùng [%s] không được tìm thấy.",
                     changePasswordRequest.getUsername()));
         }
-        if (!StringUtils.isEmpty(user.password()) &&
-                !new SecurityUtils().decrypt(user.password()).equals(changePasswordRequest.oldPassword())) {
+        if (!StringUtils.isEmpty(user.password())
+                && !SecurityUtils.checkEncryptPassword(changePasswordRequest.oldPassword(), user.password())) {
             throw new BadRequestException(String.format("Mật khẩu cũ của người dùng [%s] không đúng.",
                     changePasswordRequest.getUsername()));
         }
         if (!StringUtils.isEmpty(user.password())
-                && new SecurityUtils().decrypt(user.password()).equals(changePasswordRequest.newPassword())) {
+                && SecurityUtils.checkEncryptPassword(changePasswordRequest.newPassword(), user.password())) {
             throw new BadRequestException(String.format("Mật khẩu mới của người dùng [%s] không được trùng với mật khẩu cũ.",
                     changePasswordRequest.getUsername()));
         }
         user.setLastPasswordChange(new Date());
-        user.setPassword(new SecurityUtils().encrypt(changePasswordRequest.getNewPassword()));
+        user.updatePassword(changePasswordRequest.getNewPassword());
         user = userRepository.save(user);
         return user;
     }

@@ -25,9 +25,9 @@ spring:
 app:
   auth:
     tokenSecret: JWTSuperSecretKey
-    tokenExpirationMsec: 864000000
+    tokenExpirationMsec: 604800000 #-- Hết hạn token 7 ngày
   account:
     password-policy-regex: ''
-    email-invalid-regex: '^([a-zA-Z0-9_\.\-])+\@(([a-zA-Z0-9\-])+\.)+([a-zA-Z0-9]{2,4})+$'
-    username-symbol-regex: '[$&+,:;=?@#|]'
-    password-expiration-in-day: 90
+    email-invalid-regex: '^([a-zA-Z0-9_\.\-])+\@(([a-zA-Z0-9\-])+\.)+([a-zA-Z0-9]{2,4})+$' #-- Định dạng email đúng
+    username-symbol-regex: '[$&+,:;=?@#|]' #-- Username không được chứa ký tự đặc biệt
+    password-expiration-in-day: 90 #-- Hết hạn mật khẩu 70 ngày
