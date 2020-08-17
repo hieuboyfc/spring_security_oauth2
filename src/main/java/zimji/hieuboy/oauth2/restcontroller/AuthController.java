@@ -1,11 +1,14 @@
 package zimji.hieuboy.oauth2.restcontroller;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Scope;
+import org.springframework.context.annotation.ScopedProxyMode;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.context.WebApplicationContext;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 import zimji.hieuboy.oauth2.entity.User;
 import zimji.hieuboy.oauth2.payload.ApiResponse;
@@ -25,6 +28,7 @@ import java.net.URI;
 
 @RestController
 @RequestMapping("/api/auth")
+@Scope(value = WebApplicationContext.SCOPE_REQUEST, proxyMode = ScopedProxyMode.TARGET_CLASS)
 public class AuthController {
 
     @Autowired
