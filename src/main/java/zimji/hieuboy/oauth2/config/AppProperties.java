@@ -43,7 +43,7 @@ public class AppProperties {
         private String passwordPolicyRegex; // Định dạng mật khẩu
         private String emailInvalidRegex; // Định dạng địa chỉ email chính xác
         private String usernameSymbolRegex; // Kiểm tra ký tự đặc biệt cho username
-        private String passwordExpirationInDay; // Thời gian hết hạn mật khẩu
+        private Integer passwordExpirationInDay; // Thời gian hết hạn mật khẩu
 
         public String getPasswordPolicyRegex() {
             return passwordPolicyRegex;
@@ -69,11 +69,11 @@ public class AppProperties {
             this.usernameSymbolRegex = usernameSymbolRegex;
         }
 
-        public String getPasswordExpirationInDay() {
+        public Integer getPasswordExpirationInDay() {
             return passwordExpirationInDay;
         }
 
-        public void setPasswordExpirationInDay(String passwordExpirationInDay) {
+        public void setPasswordExpirationInDay(Integer passwordExpirationInDay) {
             this.passwordExpirationInDay = passwordExpirationInDay;
         }
     }

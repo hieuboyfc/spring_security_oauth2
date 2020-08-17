@@ -25,7 +25,7 @@ public class TokenAuthenticationEntryPoint implements AuthenticationEntryPoint {
                          HttpServletResponse httpServletResponse,
                          AuthenticationException e)
             throws IOException {
-        logger.error("Phản hồi lỗi không được phép. Thông điệp - {}", e.getMessage());
+        logger.error("Bạn không có quyền truy cập vào hệ thống - {}", e.getMessage());
         httpServletResponse.sendError(HttpServletResponse.SC_UNAUTHORIZED, e.getLocalizedMessage());
     }
 }

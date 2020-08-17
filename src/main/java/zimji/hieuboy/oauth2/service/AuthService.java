@@ -3,15 +3,13 @@ package zimji.hieuboy.oauth2.service;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import zimji.hieuboy.oauth2.config.AppProperties;
+import zimji.hieuboy.oauth2.config.security.TokenPayloadClaims;
 import zimji.hieuboy.oauth2.config.security.TokenProvider;
 import zimji.hieuboy.oauth2.config.security.UserPrincipal;
 import zimji.hieuboy.oauth2.entity.User;
@@ -60,9 +58,9 @@ public class AuthService implements UserDetailsService {
     }
 
     @Transactional
-    public UserDetails loadUserById(Long id) {
-        User user = userRepository.findById(id).orElseThrow(
-                () -> new ResourceNotFoundException("User", "id", id)
+    public UserDetails loadUserById(String username) {
+        User user = userRepository.findByUsername(username).orElseThrow(
+                () -> new ResourceNotFoundException("User", "username", username)
         );
         return UserPrincipal.create(user);
     }
@@ -77,8 +75,8 @@ public class AuthService implements UserDetailsService {
         if (user.lastPasswordChange() == null) {
             throw new BadRequestException("Không tìm thấy lần thay đổi mật khẩu lần cuối.");
         }
-        if (Common.getDateDiff(user.lastPasswordChange(), new Date(), TimeUnit.DAYS)
-                > Long.parseLong(appProperties.getAccount().getPasswordExpirationInDay())) {
+        Integer passwordExpirationInDay = appProperties.getAccount().getPasswordExpirationInDay();
+        if (Common.getDateDiff(user.lastPasswordChange(), new Date(), TimeUnit.DAYS) > passwordExpirationInDay) {
             throw new BadRequestException(String.format(
                     "Mật khẩu đã quá hạn sử dụng (được sử dụng từ ngày [%s]) yêu cầu phải thay đổi mật khẩu để tiếp tục truy cập vào hệ thống.",
                     Common.convertDate2String(user.lastPasswordChange(), "DD/MM/YYYY")));
@@ -91,15 +89,14 @@ public class AuthService implements UserDetailsService {
             throw new BadRequestException("Sai thông tin mật khẩu.");
         }
 
-        Authentication authentication = authenticationManager.authenticate(
+        /*Authentication authentication = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(
                         loginRequest.getUsername(),
                         loginRequest.getPassword()
                 )
         );
-
-        SecurityContextHolder.getContext().setAuthentication(authentication);
-        return new AuthResponse(tokenProvider.createToken(authentication));
+        SecurityContextHolder.getContext().setAuthentication(authentication);*/
+        return new AuthResponse(tokenProvider.createToken(new TokenPayloadClaims(user, passwordExpirationInDay, request)));
     }
 
     /**
