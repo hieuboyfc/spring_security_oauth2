@@ -3,7 +3,7 @@ package zimji.hieuboy.oauth2;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
-import zimji.hieuboy.oauth2.config.AppProperties;
+import zimji.hieuboy.oauth2.configs.AppProperties;
 
 import javax.annotation.PostConstruct;
 import java.util.TimeZone;
