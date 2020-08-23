@@ -52,9 +52,8 @@ public class AuthController {
     }
 
     @PostMapping("/active-account")
-    public ResponseEntity<?> activeAccount(@Valid @RequestBody String username,
-                                           @Valid @RequestBody String totp) {
-        UserEntity userEntity = authService.activeAccount(username, totp);
+    public ResponseEntity<?> activeAccount(@Valid @RequestBody String tokenData) {
+        UserEntity userEntity = authService.activeAccount(tokenData);
         return ResponseEntity.ok(new ApiResponse(true, "Kích hoạt tài khoản cho người dùng thành công.", userEntity));
     }
 

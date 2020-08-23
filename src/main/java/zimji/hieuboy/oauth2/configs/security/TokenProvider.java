@@ -40,7 +40,7 @@ public class TokenProvider {
                 .claim("did", tokenPayloadClaims.did())
                 .claim("lcp", tokenPayloadClaims.lcp())
                 .claim("expirationDate", tokenPayloadClaims.expirationDate())
-                .signWith(SignatureAlgorithm.HS512, appProperties.getAuth().getTokenSecret())
+                .signWith(SignatureAlgorithm.HS512, appProperties.getAuth().tokenSecret())
                 .setSubject("System Authentication")
                 .compact();
     }
@@ -60,7 +60,7 @@ public class TokenProvider {
     }
 
     public TokenPayloadClaims verifyTokenGetInfo(String token) {
-        Claims claims = Jwts.parser().setSigningKey(appProperties.getAuth().getTokenSecret()).parseClaimsJws(token).getBody();
+        Claims claims = Jwts.parser().setSigningKey(appProperties.getAuth().tokenSecret()).parseClaimsJws(token).getBody();
         TokenPayloadClaims tokenPayloadClaims = new TokenPayloadClaims();
         tokenPayloadClaims.iss(claims.getIssuer());
         tokenPayloadClaims.exp(claims.getExpiration());
@@ -76,7 +76,7 @@ public class TokenProvider {
 
     public boolean validateToken(String token) {
         try {
-            Jwts.parser().setSigningKey(appProperties.getAuth().getTokenSecret()).parseClaimsJws(token);
+            Jwts.parser().setSigningKey(appProperties.getAuth().tokenSecret()).parseClaimsJws(token);
             return true;
         } catch (SignatureException ex) {
             logger.error("JWT Token có chữ ký không hợp lệ");

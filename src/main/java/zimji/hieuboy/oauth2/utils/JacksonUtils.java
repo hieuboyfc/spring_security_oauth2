@@ -10,9 +10,9 @@ import com.fasterxml.jackson.databind.ser.FilterProvider;
 import com.fasterxml.jackson.databind.ser.impl.SimpleBeanPropertyFilter;
 import com.fasterxml.jackson.databind.ser.impl.SimpleFilterProvider;
 import org.apache.commons.lang3.StringUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import zimji.hieuboy.oauth2.exceptions.InternalServerException;
+
+import java.io.IOException;
 
 /**
  * @author HieuDT28 - (Hiếu Boy)
@@ -21,7 +21,6 @@ import zimji.hieuboy.oauth2.exceptions.InternalServerException;
 
 public class JacksonUtils {
 
-    private static final Logger logger = LoggerFactory.getLogger(JacksonUtils.class);
     private static JacksonUtils instance = new JacksonUtils();
 
     public static JacksonUtils getInstance() {
@@ -30,6 +29,32 @@ public class JacksonUtils {
 
     private JacksonUtils() {
 
+    }
+
+    public ObjectMapper getObjectMapper() {
+        ObjectMapper objectMapper = new ObjectMapper();
+        objectMapper.disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
+        objectMapper.setAnnotationIntrospector(new JacksonAnnotationIntrospector() {
+            private static final long serialVersionUID = 1L;
+
+            @Override
+            public Object findFilterId(Annotated a) {
+                return null;
+            }
+        });
+        return objectMapper;
+    }
+
+    public <T> T string2Object(String input, Class<T> clazz) {
+        T result = null;
+        try {
+            if (!StringUtils.isEmpty(input)) {
+                result = getObjectMapper().readValue(input, clazz);
+            }
+        } catch (IOException e) {
+            throw new InternalServerException(Common.getStackTrace(e));
+        }
+        return result;
     }
 
     public ObjectWriter getObjectWriter(String filterId, String[] arrFilterOutAllExcept,
@@ -69,16 +94,16 @@ public class JacksonUtils {
 
     public String object2String(Object input, String filterId, String[] arrFilterOutAllExcept,
                                 String[] arrSerializeAllExcept) {
-        String sRet = null;
+        String result = null;
         try {
             if (input != null) {
-                sRet = getObjectWriter(filterId, arrFilterOutAllExcept, arrSerializeAllExcept)
+                result = getObjectWriter(filterId, arrFilterOutAllExcept, arrSerializeAllExcept)
                         .writeValueAsString(input);
             }
         } catch (JsonProcessingException e) {
             throw new InternalServerException(Common.getStackTrace(e));
         }
-        return sRet;
+        return result;
     }
 
 }

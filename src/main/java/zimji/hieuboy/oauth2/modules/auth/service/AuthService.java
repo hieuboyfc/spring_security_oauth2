@@ -18,19 +18,14 @@ import zimji.hieuboy.oauth2.configs.security.UserPrincipal;
 import zimji.hieuboy.oauth2.modules.auth.entity.UserEntity;
 import zimji.hieuboy.oauth2.exceptions.BadRequestException;
 import zimji.hieuboy.oauth2.exceptions.ResourceNotFoundException;
-import zimji.hieuboy.oauth2.modules.auth.payload.AuthResponse;
-import zimji.hieuboy.oauth2.modules.auth.payload.ChangePasswordRequest;
-import zimji.hieuboy.oauth2.modules.auth.payload.LoginRequest;
-import zimji.hieuboy.oauth2.modules.auth.payload.SignUpRequest;
+import zimji.hieuboy.oauth2.modules.auth.payload.*;
 import zimji.hieuboy.oauth2.modules.auth.repository.IUserRepository;
 import zimji.hieuboy.oauth2.modules.auth.type.SocialProvider;
 import zimji.hieuboy.oauth2.modules.email.EmailOutboxService;
-import zimji.hieuboy.oauth2.utils.Common;
-import zimji.hieuboy.oauth2.utils.RequestClientInfo;
-import zimji.hieuboy.oauth2.utils.SecurityUtils;
-import zimji.hieuboy.oauth2.utils.TOTP;
+import zimji.hieuboy.oauth2.utils.*;
 
 import javax.servlet.http.HttpServletRequest;
+import java.util.Base64;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
@@ -89,6 +84,7 @@ public class AuthService implements UserDetailsService {
     /**
      * Đăng nhập tài khoản
      */
+    @Transactional
     public AuthResponse signin(LoginRequest loginRequest, HttpServletRequest request) {
 
         UserEntity userEntity = validateInput(loginRequest.getUsername(), null, loginRequest.getPassword(), null, null, 2);
@@ -118,7 +114,7 @@ public class AuthService implements UserDetailsService {
                         String.format("[%s] Thông báo đăng nhập tài khoản vào hệ thống", "ZimJi"),
                         appProperties.getEmailConfig().fileEmailSignin(), mapEmailTemplate);
             } catch (Exception e) {
-                logger.error("[ERROR] Không thể lưu thông tin dữ liệu Email khi đăng nhập {}", e.getMessage());
+                logger.error("[ERROR] Không thể lưu thông tin dữ liệu Email khi đăng nhập");
             }
         }
         /*Authentication authentication = authenticationManager.authenticate(
@@ -134,6 +130,7 @@ public class AuthService implements UserDetailsService {
     /**
      * Đăng ký tài khoản
      */
+    @Transactional
     public UserEntity signup(SignUpRequest signUpRequest) {
         if (validateInput(signUpRequest.getUsername(), signUpRequest.email(), null,
                 signUpRequest.password(), signUpRequest.confirmPassword(), 1) != null) {
@@ -147,7 +144,6 @@ public class AuthService implements UserDetailsService {
         userEntity.setLastPasswordChange(new Date());
         userEntity.updatePassword(signUpRequest.password());
         userEntity.setProvider(SocialProvider.local);
-        userEntity = userRepository.save(userEntity);
         if (!userEntity.emailVerified()) {
             try {
                 Map<String, String> mapEmailTemplate = new HashMap<>();
@@ -161,8 +157,9 @@ public class AuthService implements UserDetailsService {
                 emailOutboxService.insertItem(userEntity.email(),
                         String.format("[%s] Thông báo đăng ký tài khoản trên hệ thống", "ZimJi"),
                         appProperties.getEmailConfig().fileEmailSignupActiveAccount(), mapEmailTemplate);
+                userEntity = userRepository.save(userEntity);
             } catch (Exception e) {
-                logger.error("[ERROR] Không thể lưu thông tin dữ liệu Email khi đăng ký tài khoản {}", e.getMessage());
+                logger.error("[ERROR] Không thể lưu thông tin dữ liệu Email khi đăng ký tài khoản");
             }
         }
         return userEntity;
@@ -171,6 +168,7 @@ public class AuthService implements UserDetailsService {
     /**
      * Đổi mật khẩu
      */
+    @Transactional
     public UserEntity changePassword(ChangePasswordRequest changePasswordRequest) {
         UserEntity userEntity = validateInput(changePasswordRequest.getUsername(), null,
                 changePasswordRequest.oldPassword(), changePasswordRequest.newPassword(),
@@ -191,7 +189,6 @@ public class AuthService implements UserDetailsService {
         }
         userEntity.setLastPasswordChange(new Date());
         userEntity.updatePassword(changePasswordRequest.getNewPassword());
-        userEntity = userRepository.save(userEntity);
         try {
             Map<String, String> mapEmailTemplate = new HashMap<>();
             mapEmailTemplate.put("APP_CODE", "ZimJi");
@@ -199,8 +196,9 @@ public class AuthService implements UserDetailsService {
             emailOutboxService.insertItem(userEntity.email(),
                     String.format("[%s] Thông báo thay đổi mật khẩu cho tài khoản trên hệ thống", "ZimJi"),
                     appProperties.getEmailConfig().fileEmailChangePassword(), mapEmailTemplate);
+            userEntity = userRepository.save(userEntity);
         } catch (Exception e) {
-            logger.error("[ERROR] Không thể lưu thông tin dữ liệu Email khi thay đổi mật khẩu cho tài khoản {}", e.getMessage());
+            logger.error("[ERROR] Không thể lưu thông tin dữ liệu Email khi thay đổi mật khẩu cho tài khoản");
         }
         return userEntity;
     }
@@ -208,16 +206,19 @@ public class AuthService implements UserDetailsService {
     /**
      * Kích hoạt tài khoản
      */
-    public UserEntity activeAccount(String username, String totp) {
-        if (!TOTP.getInstance().checkTOTP(username, totp,
+    @Transactional
+    public UserEntity activeAccount(String tokenData) {
+        Base64.Decoder decoder = Base64.getDecoder();
+        TOTPToken totpToken = JacksonUtils.getInstance().string2Object(new String(decoder.decode(tokenData)), TOTPToken.class);
+        if (!TOTP.getInstance().checkTOTP(totpToken.username(), totpToken.totp(),
                 appProperties.getAccount().activeTotpExpirationInMs(),
                 appProperties.getAccount().codeDigits())) {
             throw new BadRequestException("Mã TOTP không hợp lệ.");
         }
-        UserEntity userEntity = validateInput(username, null, null, null, null, 4);
+        UserEntity userEntity = validateInput(totpToken.username(), null, null, null, null, 4);
         if (userEntity.emailVerified()) {
             throw new BadRequestException(
-                    String.format("Tên tài khoản [%s] đã được kích hoạt trên hệ thống từ trước.", username));
+                    String.format("Tên tài khoản [%s] đã được kích hoạt trên hệ thống từ trước.", userEntity.username()));
         }
         userEntity.emailVerified(true);
         if (userEntity.emailVerified()) {
@@ -228,11 +229,12 @@ public class AuthService implements UserDetailsService {
                 emailOutboxService.insertItem(userEntity.email(),
                         String.format("[%s] Thông báo kích hoạt tài khoản trên hệ thống", "ZimJi"),
                         appProperties.getEmailConfig().fileEmailActiveAccount(), mapEmailTemplate);
+                userEntity = userRepository.save(userEntity);
             } catch (Exception e) {
-                logger.error("[ERROR] Không thể lưu thông tin dữ liệu Email khi kích hoạt tài khoản {}", e.getMessage());
+                logger.error("[ERROR] Không thể lưu thông tin dữ liệu Email khi kích hoạt tài khoản");
             }
         }
-        return userRepository.save(userEntity);
+        return userEntity;
     }
 
     /**

@@ -44,6 +44,7 @@ app:
     reset-totp-expiration-in-ms: 86400000 #-- Hết hạn mã TOTP 1 ngày
     active-totp-expiration-in-ms: 604800000 #-- Hết hạn mã TOTP 7 ngày
     code-digits: 8 #-- 8 Mã số
+    expiration-in-ms: 600000 #-- Hết hạn 600000ms = 10p
   email-config:
     folder-email-default: /email_templates/
     file-email-active-account: email_active_account.ftl
@@ -51,7 +52,7 @@ app:
     file-email-expiration-password: email_expiration_password.ftl
     file-email-reset-password: email_reset_password.ftl
     file-email-signin: email_signin.ftl
-    file-email-signin-active-account: email_signup_active_account.ftl
+    file-email-signup-active-account: email_signup_active_account.ftl
     active-link-in-email: http://localhost:1234/api/auth/active-account
     reset-link-in-email: http://localhost:1234/api/auth/reset-account
     send-email-notify-when-login: true
